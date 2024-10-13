@@ -1,0 +1,2 @@
+requests==2.32.3
+svgwrite==1.4.3

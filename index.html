@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      #container {
+        display: flex;
+        justify-content: center;
+      }
+      #viewControls {
+        display: flex;
+        width: 10em;
+        flex-direction: column;
+      }
+      .viewControlLabel {
+        margin: 1em 0 0;
+      }
+      .viewControlInput {
+        margin: 0 1em 0 0;
+      }
+      #reset_view {
+        margin: 1em 1em 0 0;
+      }
+      #info {
+        width: 20em;
+        margin: 1em 1em 0;
+      }
+      .transportInfo {
+        padding: 0 1em 1em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <div id="viewControls">
+        <label class="viewControlLabel" for="scaleFactor">Scale: </label>
+        <input id="scaleFactor" class="viewControlInput" type="number" />
+        <label class="viewControlLabel" for="x_offsert">Offsert X: </label>
+        <input id="x_offsert" class="viewControlInput" type="number" step="500" />
+        <label class="viewControlLabel" for="y_offsert">Offsert Y: </label>
+        <input id="y_offsert" class="viewControlInput" type="number" step="500" />
+        <button id="reset_view" class="viewControlInput">reset</button>
+      </div>
+      <canvas id="canvas" width="700px" height="700px">
+        <p>Обнови блять браузер. Твой даже canvas не поддерживает. Нахуй мне с таким работать?!</p>
+      </canvas>
+      <div id="info">
+        <p id="info_name"></p>
+        <p id="info_points"></p>
+        <p>Transport:</p>
+        <div id="info_transport_0" class="transportInfo">
+          <div></div>
+          <!-- TODO: view buttons logic -->
+          <button id="view_transport_0">view</button>
+        </div>
+        <div id="info_transport_1" class="transportInfo">
+          <div></div>
+          <button id="view_transport_1">view</button>
+        </div>
+        <div id="info_transport_2" class="transportInfo">
+          <div></div>
+          <button id="view_transport_2">view</button>
+        </div>
+        <div id="info_transport_3" class="transportInfo">
+          <div></div>
+          <button id="view_transport_3">view</button>
+        </div>
+        <div id="info_transport_4" class="transportInfo">
+          <div></div>
+          <button id="view_transport_4">view</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      function degToRad(degrees) {
+        return (degrees * Math.PI) / 180;
+      }
+
+      function rotateVector(vector, angleDegrees) {
+        const angleRadians = angleDegrees * (Math.PI / 180);
+
+        return {
+          x: vector.x * Math.cos(angleRadians) - vector.y * Math.sin(angleRadians),
+          y: vector.x * Math.sin(angleRadians) + vector.y * Math.cos(angleRadians),
+        };
+      }
+
+      function drawCanvas(ctx, state, scale) {
+        scale = scale * Number(document.getElementById("scaleFactor").value);
+        const x_offset = Number(document.getElementById("x_offsert").value);
+        const y_offset = Number(document.getElementById("y_offsert").value);
+
+        ctx.font = `${24 * scale}px georgia`;
+
+        for (const a of state.anomalies) {
+          ctx.fillStyle = "rgb(43 235 9)";
+          ctx.beginPath();
+          ctx.arc(
+            (a.x + x_offset) * scale,
+            (a.y + y_offset) * scale,
+            a.radius * scale,
+            degToRad(0),
+            degToRad(360),
+            false
+          );
+          ctx.fill();
+
+          ctx.fillStyle = "rgb(43 235 9 / 5%)";
+          ctx.beginPath();
+          ctx.arc(
+            (a.x + x_offset) * scale,
+            (a.y + y_offset) * scale,
+            a.effectiveRadius * scale,
+            degToRad(0),
+            degToRad(360),
+            false
+          );
+          ctx.fill();
+        }
+
+        for (const t of state.transports) {
+          ctx.fillStyle = "rgb(10 52 240)";
+          ctx.beginPath();
+          ctx.arc((t.x + x_offset) * scale, (t.y + y_offset) * scale, 5 * scale, degToRad(0), degToRad(360), false);
+          ctx.fill();
+
+          ctx.fillText(`[...${t.id.slice(-5)}]`, (t.x + x_offset) * scale + 5, (t.y + y_offset) * scale + 5);
+
+          const view_center = t.velocity;
+          const cone_of_view_angle = 60;
+          const left_side = rotateVector(view_center, cone_of_view_angle);
+          const right_side = rotateVector(view_center, -cone_of_view_angle);
+
+          ctx.strokeStyle = "rgb(10 52 240)";
+          ctx.lineWidth = 1 * scale;
+
+          ctx.beginPath();
+          ctx.moveTo((t.x + x_offset) * scale, (t.y + y_offset) * scale);
+          ctx.lineTo(
+            (t.x + x_offset) * scale + view_center.x * scale,
+            (t.y + y_offset) * scale + view_center.y * scale
+          );
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo((t.x + x_offset) * scale, (t.y + y_offset) * scale);
+          ctx.lineTo((t.x + x_offset) * scale + left_side.x * scale, (t.y + y_offset) * scale + left_side.y * scale);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo((t.x + x_offset) * scale, (t.y + y_offset) * scale);
+          ctx.lineTo((t.x + x_offset) * scale + right_side.x * scale, (t.y + y_offset) * scale + right_side.y * scale);
+          ctx.stroke();
+        }
+
+        for (const e of state.enemies) {
+          ctx.fillStyle = "rgb(235 9 32)";
+          ctx.beginPath();
+          ctx.arc((e.x + x_offset) * scale, (e.y + y_offset) * scale, 5 * scale, degToRad(0), degToRad(360), false);
+          ctx.fill();
+
+          ctx.fillText(`health: ${e.health}`, (e.x + x_offset) * scale + 5, (e.y + y_offset) * scale + 5);
+
+          ctx.fillStyle = "rgb(235 9 32)";
+          ctx.lineWidth = 1 * scale;
+          ctx.beginPath();
+          ctx.moveTo((e.x + x_offset) * scale, (e.y + y_offset) * scale);
+          ctx.lineTo((e.x + x_offset) * scale + e.velocity.x * scale, (e.y + y_offset) * scale + e.velocity.y * scale);
+          ctx.stroke();
+        }
+
+        for (const b of state.bounties) {
+          ctx.fillStyle = "rgb(242 228 10)";
+          ctx.beginPath();
+          ctx.arc((b.x + x_offset) * scale, (b.y + y_offset) * scale, 5 * scale, degToRad(0), degToRad(360), false);
+          ctx.fill();
+        }
+      }
+
+      function updateInfo(state) {
+        document.getElementById("info_name").innerText = `Name: ${state.name}`;
+        document.getElementById("info_points").innerText = `Points: ${state.points}`;
+        for (const [t_index, t] of state.transports.entries()) {
+          document.getElementById(`info_transport_${t_index}`).firstElementChild.innerHTML = `
+            <p>ID: [...${t.id.slice(-5)}]</p>
+            <p ${t.health === 0 ? "style='color:red'" : ""}>Health: ${t.health}</p>
+            <p ${t.shieldLeftMs !== 0 ? "style='color:blue'" : ""}>Shield Left Ms: ${t.shieldLeftMs}</p>
+            <p>Shield Cooldown Ms: ${t.shieldCooldownMs}</p>
+            <p>Attack Cooldown Ms: ${t.attackCooldownMs}</p>
+          `;
+          document.getElementById(`view_transport_${t_index}`).onclick = () => {
+            document.getElementById("scaleFactor").value = 5;
+            document.getElementById("x_offsert").value = -t.x + 1000;
+            document.getElementById("y_offsert").value = -t.y + 1000;
+          };
+        }
+      }
+
+      document.getElementById("reset_view").onclick = () => {
+        document.getElementById("scaleFactor").value = 1;
+        document.getElementById("x_offsert").value = 0;
+        document.getElementById("y_offsert").value = 0;
+      };
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", "state.json", true);
+      xhr.onerror = () => {
+        console.error("Request failed");
+      };
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const state = JSON.parse(xhr.responseText);
+
+          const canvas = document.getElementById("canvas");
+          const scale = canvas.width / state.mapSize.x;
+          const x_offset = 0;
+          const y_offset = 0;
+          document.getElementById("scaleFactor").value = 1;
+          document.getElementById("x_offsert").value = x_offset;
+          document.getElementById("y_offsert").value = y_offset;
+
+          const ctx = canvas.getContext("2d");
+
+          updateInfo(state);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawCanvas(ctx, state, scale);
+
+          const updateCanvas = () => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", "state.json", true);
+            xhr.onerror = () => {
+              console.error("Request failed");
+            };
+            xhr.onload = () => {
+              if (xhr.getResponseHeader("Content-Type") === "application/json") {
+                const state = JSON.parse(xhr.responseText);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                updateInfo(state);
+                drawCanvas(ctx, state, scale);
+              }
+              setTimeout(updateCanvas, 330);
+            };
+            xhr.send();
+          };
+          setTimeout(updateCanvas, 330);
+        } else {
+          console.error("Failed to load JSON file");
+        }
+      };
+      xhr.send();
+    </script>
+  </body>
+</html>
